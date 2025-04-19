@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 
 interface File {
@@ -26,7 +26,7 @@ interface FileContextValue {
   folders: Folder[];
   currentFolder: string | null;
   breadcrumbs: Array<{ id: string; name: string }>;
-  addFile: (name: string, type: string, content: string, file: File | null) => void;
+  addFile: (name: string, type: string, content: string) => void;
   addFolder: (name: string) => void;
   deleteItem: (id: string, isFolder: boolean) => void;
   navigateToFolder: (folderId: string | null) => void;
@@ -38,38 +38,65 @@ interface FileContextValue {
 
 const FileContext = createContext<FileContextValue | undefined>(undefined);
 
-const STORAGE_KEY = 'file-forge-data';
+const STORAGE_KEY = "file-forge-data";
+
+// Segédfüggvények
+const loadStoredData = () => {
+  const storedData = localStorage.getItem(STORAGE_KEY);
+  if (!storedData) return { files: [], folders: [] };
+  const parsedData = JSON.parse(storedData);
+  return {
+    files: parsedData.files.map((file: File) => ({
+      ...file,
+      createdAt: new Date(file.createdAt),
+      modifiedAt: new Date(file.modifiedAt),
+    })),
+    folders: parsedData.folders.map((folder: Folder) => ({
+      ...folder,
+      createdAt: new Date(folder.createdAt),
+    })),
+  };
+};
+
+const saveDataToStorage = (files: File[], folders: Folder[]) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, folders }));
+};
 
 export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
-  const [breadcrumbs, setBreadcrumbs] = useState([
-    { id: 'root', name: 'Home' }
-  ]);
 
-  useEffect(() => {
-    const storedData = localStorage.getItem(STORAGE_KEY);
-    if (storedData) {
-      const parsedData = JSON.parse(storedData);
-      setFiles(parsedData.files.map((file: File) => ({
-        ...file,
-        createdAt: new Date(file.createdAt),
-        modifiedAt: new Date(file.modifiedAt),
-      })));
-      setFolders(parsedData.folders.map((folder: Folder) => ({
-        ...folder,
-        createdAt: new Date(folder.createdAt),
-      })));
+  // Breadcrumbs memoizálása
+  const breadcrumbs = useMemo(() => {
+    let path = [{ id: "root", name: "Home" }];
+    let folderId = currentFolder;
+
+    while (folderId) {
+      const folder = folders.find((f) => f.id === folderId);
+      if (!folder) break;
+      path.unshift({ id: folder.id, name: folder.name });
+      folderId = folder.parentId;
     }
+
+    return path;
+  }, [currentFolder, folders]);
+
+  // Adatok betöltése a localStorage-ból
+  useEffect(() => {
+    const { files, folders } = loadStoredData();
+    setFiles(files);
+    setFolders(folders);
   }, []);
 
+  // Adatok mentése a localStorage-ba
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, folders }));
+    saveDataToStorage(files, folders);
   }, [files, folders]);
 
-  const addFile = (name: string, type: string, content: string, file: File | null) => {
+  // Fájl hozzáadása
+  const addFile = useCallback((name: string, type: string, content: string) => {
     const newFile: File = {
       id: uuidv4(),
       name,
@@ -80,106 +107,81 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
       content,
       size: content.length,
     };
-    setFiles([...files, newFile]);
+    setFiles((prevFiles) => [...prevFiles, newFile]);
     toast({
       title: "File Created",
-      description: `File ${name} created successfully.`,
+      description: `File "${name}" created successfully.`,
     });
-  };
+  }, [currentFolder, toast]);
 
-  const addFolder = (name: string) => {
+  // Mappa hozzáadása
+  const addFolder = useCallback((name: string) => {
     const newFolder: Folder = {
       id: uuidv4(),
       name,
       parentId: currentFolder,
       createdAt: new Date(),
     };
-    setFolders([...folders, newFolder]);
+    setFolders((prevFolders) => [...prevFolders, newFolder]);
     toast({
       title: "Folder Created",
-      description: `Folder ${name} created successfully.`,
+      description: `Folder "${name}" created successfully.`,
     });
-  };
+  }, [currentFolder, toast]);
 
-  const deleteItem = (id: string, isFolder: boolean) => {
+  // Elem törlése
+  const deleteItem = useCallback((id: string, isFolder: boolean) => {
     if (isFolder) {
-      // Delete folder and its contents
-      const folderToDelete = folders.find((folder) => folder.id === id);
-      if (folderToDelete) {
-        const deleteFolderAndContents = (folderId: string) => {
-          // Delete files within the folder
-          const filesToDelete = files.filter((file) => file.parentId === folderId);
-          setFiles(files.filter((file) => !filesToDelete.some((f) => f.id === file.id)));
-    
-          // Delete subfolders and their contents recursively
-          const subfolders = folders.filter((folder) => folder.parentId === folderId);
-          subfolders.forEach((subfolder) => {
-            deleteFolderAndContents(subfolder.id);
-          });
-    
-          // Finally, delete the folder itself
-          setFolders(folders.filter((folder) => folder.id !== folderId));
-        };
-    
-        deleteFolderAndContents(id);
-        toast({
-          title: "Folder Deleted",
-          description: `Folder ${folderToDelete.name} and its contents deleted successfully.`,
-        });
-      }
-    } else {
-      // Delete file
-      const fileToDelete = files.find((file) => file.id === id);
-      if (fileToDelete) {
-        setFiles(files.filter((file) => file.id !== id));
-        toast({
-          title: "File Deleted",
-          description: `File ${fileToDelete.name} deleted successfully.`,
-        });
-      }
-    }
-  };
+      const deleteFolderRecursively = (folderId: string) => {
+        setFiles((prevFiles) =>
+          prevFiles.filter((file) => file.parentId !== folderId)
+        );
+        const subfolders = folders.filter((folder) => folder.parentId === folderId);
+        subfolders.forEach((subfolder) => deleteFolderRecursively(subfolder.id));
+        setFolders((prevFolders) =>
+          prevFolders.filter((folder) => folder.id !== folderId)
+        );
+      };
 
-  const navigateToFolder = (folderId: string | null) => {
+      deleteFolderRecursively(id);
+      toast({ title: "Folder Deleted", description: "Folder deleted successfully." });
+    } else {
+      setFiles((prevFiles) => prevFiles.filter((file) => file.id !== id));
+      toast({ title: "File Deleted", description: "File deleted successfully." });
+    }
+  }, [folders, toast]);
+
+  // Mappába navigálás
+  const navigateToFolder = useCallback((folderId: string | null) => {
     setCurrentFolder(folderId);
-  
-    if (folderId === null) {
-      // Navigate to Home
-      setBreadcrumbs([{ id: 'root', name: 'Home' }]);
-    } else {
-      // Build breadcrumbs
-      let newBreadcrumbs = [{ id: 'root', name: 'Home' }];
-      let currentFolderId: string | null = folderId;
-  
-      while (currentFolderId) {
-        const folder = folders.find((f) => f.id === currentFolderId);
-        if (folder) {
-          newBreadcrumbs.unshift({ id: folder.id, name: folder.name });
-          currentFolderId = folder.parentId;
-        } else {
-          break;
-        }
-      }
-  
-      setBreadcrumbs(newBreadcrumbs);
-    }
-  };
+  }, []);
 
-  const getFilesInFolder = (folderId: string | null) => {
-    return files.filter((file) => file.parentId === folderId);
-  };
+  // Fájlok lekérése egy adott mappában
+  const getFilesInFolder = useCallback(
+    (folderId: string | null) => files.filter((file) => file.parentId === folderId),
+    [files]
+  );
 
-  const getFoldersInFolder = (folderId: string | null) => {
-    return folders.filter((folder) => folder.parentId === folderId);
-  };
+  // Mappák lekérése egy adott mappában
+  const getFoldersInFolder = useCallback(
+    (folderId: string | null) => folders.filter((folder) => folder.parentId === folderId),
+    [folders]
+  );
 
-  const getFile = (id: string) => {
-    return files.find((file) => file.id === id);
-  };
+  // Fájl lekérése ID alapján
+  const getFile = useCallback((id: string) => files.find((file) => file.id === id), [files]);
 
-  const updateFile = (id: string, updates: Partial<File>) => {
-    setFiles(files.map(file => file.id === id ? { ...file, ...updates, modifiedAt: new Date() } : file));
-  };
+  // Fájl frissítése
+  const updateFile = useCallback(
+    (id: string, updates: Partial<File>) => {
+      setFiles((prevFiles) =>
+        prevFiles.map((file) =>
+          file.id === id ? { ...file, ...updates, modifiedAt: new Date() } : file
+        )
+      );
+    },
+    []
+  );
 
   return (
     <FileContext.Provider
@@ -205,8 +207,8 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useFiles = () => {
   const context = useContext(FileContext);
-  if (context === undefined) {
-    throw new Error('useFiles must be used within a FileProvider');
+  if (!context) {
+    throw new Error("useFiles must be used within a FileProvider");
   }
   return context;
 };
