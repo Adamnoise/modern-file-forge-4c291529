@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { FileItem, FolderItem } from "@/types/file-system";
@@ -39,7 +38,7 @@ export const useFileOperations = (
         path: file.path,
         size: 'Unknown',
         modified: new Date().toLocaleDateString(),
-        url: file.publicUrl
+        url: file.publicUrl // ✅ ez most már valid
       };
 
       toast({
