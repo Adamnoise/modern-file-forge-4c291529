@@ -22,7 +22,8 @@ export const CreateFileDialog = ({ open, onOpenChange }: CreateFileDialogProps) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (fileName.trim()) {
-      addFile(fileName, "document", "", null);
+      // Fixing the addFile call to match the expected number of arguments in FileContext
+      addFile(fileName, "document", "");
       setFileName("");
       onOpenChange(false);
     }
