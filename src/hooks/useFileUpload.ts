@@ -2,11 +2,16 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
+interface UploadedFile {
+  path: string;
+  publicUrl: string;
+}
+
 export const useFileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
-  const uploadFile = async (file: File, folder = '') => {
+  const uploadFile = async (file: File, folder = ''): Promise<UploadedFile | null> => {
     if (!(file instanceof File)) {
       toast({
         title: 'Upload Error',
@@ -18,17 +23,24 @@ export const useFileUpload = () => {
 
     setIsUploading(true);
     try {
+      // 🔧 Biztonságos fájlnév + elérési út létrehozása
       const fileExt = file.name.split('.').pop() || 'bin';
-      const sanitizedBase = file.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.\-_]/g, '');
+      const sanitizedBase = file.name
+        .replace(/\s+/g, '-')
+        .replace(/[^a-zA-Z0-9.\-_]/g, '');
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}-${sanitizedBase}`;
       const filePath = folder ? `${folder}/${fileName}` : fileName;
 
+      const contentType = file.type || 'application/octet-stream';
+
+      // ⬆️ Fájl feltöltése Supabase-re
       const { data, error } = await supabase.storage
-        .from('uploads') // 👈 ellenőrizd hogy ez pontosan a Supabase bucket neve
-        .upload(filePath, file);
+        .from('uploads')
+        .upload(filePath, file, { contentType });
 
       if (error) throw new Error(error.message);
 
+      // 🌐 Publikus URL lekérése
       const { data: publicUrlData, error: urlError } = supabase.storage
         .from('uploads')
         .getPublicUrl(filePath);
@@ -42,8 +54,12 @@ export const useFileUpload = () => {
         description: `${file.name} uploaded successfully!`,
       });
 
-      return { path: filePath, publicUrl: publicUrlData.publicUrl };
+      return {
+        path: filePath,
+        publicUrl: publicUrlData.publicUrl,
+      };
     } catch (error) {
+      console.error('Upload error:', error);
       toast({
         title: 'Upload Failed',
         description: error instanceof Error ? error.message : 'Unknown error during upload.',
