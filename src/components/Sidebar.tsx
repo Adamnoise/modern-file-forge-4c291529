@@ -1,4 +1,4 @@
-
+import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -20,7 +20,7 @@ interface SidebarItemProps {
   onClick?: () => void;
 }
 
-const SidebarItem = ({ icon, label, active, onClick }: SidebarItemProps) => {
+const SidebarItem = React.memo(({ icon, label, active, onClick }: SidebarItemProps) => {
   return (
     <TooltipProvider>
       <Tooltip>
@@ -40,7 +40,9 @@ const SidebarItem = ({ icon, label, active, onClick }: SidebarItemProps) => {
       </Tooltip>
     </TooltipProvider>
   );
-};
+});
+
+SidebarItem.displayName = "SidebarItem";
 
 interface SidebarProps {
   activePage: string;
@@ -48,64 +50,51 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ activePage, onNavigate }: SidebarProps) => {
+  const menuItems = useMemo(
+    () => [
+      { icon: <Home size={20} />, label: "Home", page: "home" },
+      { icon: <FolderOpen size={20} />, label: "Files", page: "files" },
+      { icon: <Star size={20} />, label: "Starred", page: "starred" },
+      { icon: <FileText size={20} />, label: "Documents", page: "documents" },
+      { icon: <Users size={20} />, label: "Shared", page: "shared" },
+      { icon: <Search size={20} />, label: "Search", page: "search" },
+    ],
+    []
+  );
+
+  const actionItems = useMemo(
+    () => [
+      { icon: <Plus size={20} />, label: "Create", page: "create" },
+      { icon: <Upload size={20} />, label: "Upload", page: "upload" },
+      { icon: <Settings size={20} />, label: "Settings", page: "settings" },
+    ],
+    []
+  );
+
   return (
     <div className="w-16 h-screen flex flex-col items-center py-4 bg-card border-r">
       <div className="mb-6 text-primary text-2xl font-bold">P</div>
       <nav className="flex flex-col space-y-2">
-        <SidebarItem 
-          icon={<Home size={20} />} 
-          label="Home" 
-          active={activePage === "home"} 
-          onClick={() => onNavigate("home")} 
-        />
-        <SidebarItem 
-          icon={<FolderOpen size={20} />} 
-          label="Files" 
-          active={activePage === "files"} 
-          onClick={() => onNavigate("files")} 
-        />
-        <SidebarItem 
-          icon={<Star size={20} />} 
-          label="Starred" 
-          active={activePage === "starred"} 
-          onClick={() => onNavigate("starred")} 
-        />
-        <SidebarItem 
-          icon={<FileText size={20} />} 
-          label="Documents" 
-          active={activePage === "documents"} 
-          onClick={() => onNavigate("documents")} 
-        />
-        <SidebarItem 
-          icon={<Users size={20} />} 
-          label="Shared" 
-          active={activePage === "shared"} 
-          onClick={() => onNavigate("shared")} 
-        />
-        <SidebarItem 
-          icon={<Search size={20} />} 
-          label="Search" 
-          active={activePage === "search"} 
-          onClick={() => onNavigate("search")} 
-        />
+        {menuItems.map(({ icon, label, page }) => (
+          <SidebarItem
+            key={page}
+            icon={icon}
+            label={label}
+            active={activePage === page}
+            onClick={() => onNavigate(page)}
+          />
+        ))}
       </nav>
       <div className="mt-auto flex flex-col space-y-2">
-        <SidebarItem 
-          icon={<Plus size={20} />} 
-          label="Create" 
-          onClick={() => onNavigate("create")} 
-        />
-        <SidebarItem 
-          icon={<Upload size={20} />} 
-          label="Upload" 
-          onClick={() => onNavigate("upload")} 
-        />
-        <SidebarItem 
-          icon={<Settings size={20} />} 
-          label="Settings" 
-          active={activePage === "settings"} 
-          onClick={() => onNavigate("settings")} 
-        />
+        {actionItems.map(({ icon, label, page }) => (
+          <SidebarItem
+            key={page}
+            icon={icon}
+            label={label}
+            active={activePage === page}
+            onClick={() => onNavigate(page)}
+          />
+        ))}
       </div>
     </div>
   );
