@@ -1,8 +1,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// We'll use environment variables later for the URL and anon key
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || 'https://zajsujrzfuuyjbmdabca.supabase.co', 
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphanN1anJ6ZnV1eWpibWRhYmNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxMDIzNjgsImV4cCI6MjA2MDY3ODM2OH0.g_bUvQV-HKqtO49ZQnjgvNy0Ar2CdTw6zknFA3esF0k'
-);
+// Provide default values that work during development
+// In production, these should be replaced with real values
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://example.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4YW1wbGUiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoxNjAwMDAwMDAwfQ.example';
+
+// This check prevents the error "supabaseUrl is required"
+if (!supabaseUrl || supabaseUrl === 'https://example.supabase.co') {
+  console.warn('Warning: VITE_SUPABASE_URL is not set. Using a placeholder that will not work for actual API calls.');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
