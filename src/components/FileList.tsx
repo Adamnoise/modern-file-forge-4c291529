@@ -1,4 +1,4 @@
-
+import React, { useCallback, memo } from "react";
 import {
   Table,
   TableBody,
@@ -7,28 +7,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  FileText, 
-  Image, 
-  File, 
-  Folder, 
-  MoreHorizontal, 
-  Star, 
-  Edit, 
-  Copy, 
-  Download, 
-  Share, 
-  Trash, 
-  Users 
+import {
+  FileText,
+  Image,
+  File,
+  Folder,
+  MoreHorizontal,
+  Star,
+  Edit,
+  Copy,
+  Download,
+  Share,
+  Trash,
+  Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 // Common properties for both file and folder items
 interface BaseItem {
@@ -57,22 +56,80 @@ interface FileListProps {
   items: (FileItem | FolderItem)[];
 }
 
-export const FileList = ({ items }: FileListProps) => {
-  const getFileIcon = (type: string) => {
-    switch (type) {
-      case "folder":
-        return <Folder className="h-4 w-4 text-blue-500" />;
-      case "image":
-        return <Image className="h-4 w-4 text-green-500" />;
-      case "document":
-      case "pdf":
-      case "text":
-        return <FileText className="h-4 w-4 text-purple-500" />;
-      default:
-        return <File className="h-4 w-4 text-gray-500" />;
-    }
-  };
-  
+// Icon mapping for file types
+const ICONS = {
+  folder: <Folder className="h-4 w-4 text-blue-500" />,
+  image: <Image className="h-4 w-4 text-green-500" />,
+  document: <FileText className="h-4 w-4 text-purple-500" />,
+  pdf: <FileText className="h-4 w-4 text-purple-500" />,
+  text: <FileText className="h-4 w-4 text-purple-500" />,
+  default: <File className="h-4 w-4 text-gray-500" />,
+};
+
+// Memoized function to get file icon
+const getFileIcon = (type: string) => ICONS[type] || ICONS.default;
+
+// Dropdown menu component
+const FileDropdownMenu = memo(() => (
+  <DropdownMenu>
+    <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 focus:opacity-100">
+      <MoreHorizontal size={16} className="text-muted-foreground" />
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      <DropdownMenuItem>
+        <Star size={14} className="mr-2" /> Star
+      </DropdownMenuItem>
+      <DropdownMenuItem>
+        <Edit size={14} className="mr-2" /> Rename
+      </DropdownMenuItem>
+      <DropdownMenuItem>
+        <Copy size={14} className="mr-2" /> Copy
+      </DropdownMenuItem>
+      <DropdownMenuItem>
+        <Download size={14} className="mr-2" /> Download
+      </DropdownMenuItem>
+      <DropdownMenuItem>
+        <Share size={14} className="mr-2" /> Share
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem className="text-destructive">
+        <Trash size={14} className="mr-2" /> Delete
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+));
+
+FileDropdownMenu.displayName = "FileDropdownMenu";
+
+export const FileList = memo(({ items }: FileListProps) => {
+  const renderRow = useCallback(
+    (item: FileItem | FolderItem) => {
+      const isFolder = item.type === "folder";
+
+      return (
+        <TableRow key={item.id} className="group">
+          <TableCell className="font-medium">
+            <div className="flex items-center">
+              {getFileIcon(item.type)}
+              <span className="ml-2">{item.name}</span>
+              {item.starred && <Star className="h-3 w-3 ml-2 text-yellow-500 fill-yellow-500" />}
+              {item.shared && <Users className="h-3 w-3 ml-2 text-blue-500" />}
+            </div>
+          </TableCell>
+          <TableCell>{isFolder ? "Folder" : capitalize(item.type)}</TableCell>
+          <TableCell>
+            {isFolder ? `${(item as FolderItem).children.length} items` : (item as FileItem).size}
+          </TableCell>
+          <TableCell>{item.modified || "—"}</TableCell>
+          <TableCell>
+            <FileDropdownMenu />
+          </TableCell>
+        </TableRow>
+      );
+    },
+    []
+  );
+
   return (
     <Table>
       <TableHeader>
@@ -81,58 +138,15 @@ export const FileList = ({ items }: FileListProps) => {
           <TableHead>Type</TableHead>
           <TableHead>Size</TableHead>
           <TableHead>Modified</TableHead>
-          <TableHead className="w-[70px]"></TableHead>
+          <TableHead className="w-[70px]" />
         </TableRow>
       </TableHeader>
-      <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.id} className="group">
-            <TableCell className="font-medium">
-              <div className="flex items-center">
-                {getFileIcon(item.type)}
-                <span className="ml-2">{item.name}</span>
-                {item.starred && <Star className="h-3 w-3 ml-2 text-yellow-500 fill-yellow-500" />}
-                {item.shared && <Users className="h-3 w-3 ml-2 text-blue-500" />}
-              </div>
-            </TableCell>
-            <TableCell>
-              {item.type === "folder" ? "Folder" : item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-            </TableCell>
-            <TableCell>
-              {item.type === "folder" ? `${(item as FolderItem).children.length} items` : (item as FileItem).size}
-            </TableCell>
-            <TableCell>{item.modified || "—"}</TableCell>
-            <TableCell>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 focus:opacity-100">
-                  <MoreHorizontal size={16} className="text-muted-foreground" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Star size={14} className="mr-2" /> Star
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Edit size={14} className="mr-2" /> Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Copy size={14} className="mr-2" /> Copy
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Download size={14} className="mr-2" /> Download
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Share size={14} className="mr-2" /> Share
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash size={14} className="mr-2" /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
+      <TableBody>{items.map(renderRow)}</TableBody>
     </Table>
   );
-};
+});
+
+FileList.displayName = "FileList";
+
+// Utility function to capitalize a string
+const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
