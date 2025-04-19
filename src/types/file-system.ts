@@ -1,4 +1,3 @@
-
 export interface BaseItem {
   id: string;
   name: string;
@@ -12,6 +11,7 @@ export interface BaseItem {
 export interface FileItem extends BaseItem {
   type: "document" | "image" | "pdf" | "text" | "spreadsheet";
   size?: string;
+  url?: string; // ✅ hozzáadva, opcionális mezőként
 }
 
 export interface FolderItem extends BaseItem {
