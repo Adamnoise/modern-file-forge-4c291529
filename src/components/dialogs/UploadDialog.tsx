@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useCallback } from "react";
 import {
   Dialog,
@@ -8,18 +9,20 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
+import { useFileUpload } from "@/hooks/useFileUpload";
 
 interface UploadDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (files: FileList) => void;
+  onUpload?: (files: { path: string; publicUrl: string }[]) => void;
 }
 
-// Fájl kiválasztó komponens
 const FileDropZone = ({
   onFileSelect,
+  disabled
 }: {
   onFileSelect: (files: FileList) => void;
+  disabled?: boolean;
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -59,12 +62,13 @@ const FileDropZone = ({
   return (
     <div
       className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${
+        disabled ? "opacity-50 cursor-not-allowed" : 
         isDragging ? "border-primary bg-primary/10" : "hover:border-primary"
       }`}
-      onClick={() => fileInputRef.current?.click()}
-      onDragOver={handleDragOver}
+      onClick={disabled ? undefined : () => fileInputRef.current?.click()}
+      onDragOver={disabled ? undefined : handleDragOver}
       onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDrop={disabled ? undefined : handleDrop}
     >
       <input
         type="file"
@@ -72,30 +76,51 @@ const FileDropZone = ({
         onChange={handleFileChange}
         className="hidden"
         multiple
+        disabled={disabled}
       />
       <Upload className="mx-auto mb-4" />
       <p>
-        {isDragging ? "Drop files here to upload" : "Click to select files or drag and drop"}
+        {disabled 
+          ? "Uploading..." 
+          : isDragging 
+            ? "Drop files here to upload" 
+            : "Click to select files or drag and drop"}
       </p>
     </div>
   );
 };
 
-// Fő UploadDialog komponens
-export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) => {
+export const UploadDialog = ({ 
+  isOpen, 
+  onClose, 
+  onUpload 
+}: UploadDialogProps) => {
+  const { uploadFile, isUploading } = useFileUpload();
   const [error, setError] = useState<string | null>(null);
 
   const handleFileSelect = useCallback(
-    (files: FileList) => {
+    async (files: FileList) => {
       if (!files || files.length === 0) {
         setError("No files selected. Please try again.");
         return;
       }
-      setError(null); // Töröljük az esetleges korábbi hibát
-      onUpload(files);
+
+      setError(null);
+      
+      const uploadPromises = Array.from(files).map(file => 
+        uploadFile(file)
+      );
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+      const validFiles = uploadedFiles.filter(file => file !== null);
+
+      if (validFiles.length > 0 && onUpload) {
+        onUpload(validFiles as { path: string; publicUrl: string }[]);
+      }
+
       onClose();
     },
-    [onUpload, onClose]
+    [uploadFile, onUpload, onClose]
   );
 
   return (
@@ -105,11 +130,18 @@ export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) =
           <DialogTitle>Upload Files</DialogTitle>
         </DialogHeader>
         <div className="py-4">
-          <FileDropZone onFileSelect={handleFileSelect} />
+          <FileDropZone 
+            onFileSelect={handleFileSelect} 
+            disabled={isUploading}
+          />
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={isUploading}
+          >
             Cancel
           </Button>
         </DialogFooter>

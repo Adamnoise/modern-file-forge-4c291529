@@ -2,12 +2,14 @@
 import { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { FileItem, FolderItem } from "@/types/file-system";
+import { useFileUpload } from './useFileUpload';
 
 export const useFileOperations = (
   selectedFolder: FolderItem,
   fileSystem: FolderItem
 ) => {
   const { toast } = useToast();
+  const { uploadFile } = useFileUpload();
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
@@ -25,27 +27,26 @@ export const useFileOperations = (
       description: `Created new folder: ${name}`
     });
 
-    // In a real app, this would update the backend
     console.log("Created folder:", newFolder);
   };
 
-  const handleUploadFiles = (files: FileList) => {
-    Array.from(files).forEach(file => {
+  const handleUploadFiles = async (files: { path: string; publicUrl: string }[]) => {
+    files.forEach(file => {
       const newFile: FileItem = {
         id: `file-${Date.now()}`,
-        name: file.name,
-        type: file.type.includes('image') ? 'image' : 'document',
-        path: `${selectedFolder.path}/${file.name}`,
-        size: `${Math.round(file.size / 1024)} KB`,
-        modified: new Date().toLocaleDateString()
+        name: file.path.split('/').pop() || 'Uploaded File',
+        type: file.path.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image' : 'document',
+        path: file.path,
+        size: 'Unknown',
+        modified: new Date().toLocaleDateString(),
+        url: file.publicUrl
       };
 
       toast({
         title: "File uploaded",
-        description: `Uploaded: ${file.name}`
+        description: `Uploaded: ${newFile.name}`
       });
 
-      // In a real app, this would upload to the backend
       console.log("Uploaded file:", newFile);
     });
   };
