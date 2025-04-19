@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { FileItem, FolderItem } from "@/types/file-system";
 import { useFileUpload } from './useFileUpload';
+import { v4 as uuidv4 } from 'uuid';
 
 export const useFileOperations = (
   selectedFolder: FolderItem,
@@ -14,7 +15,7 @@ export const useFileOperations = (
 
   const handleCreateFolder = (name: string) => {
     const newFolder: FolderItem = {
-      id: `folder-${Date.now()}`,
+      id: `folder-${uuidv4()}`,
       name,
       type: "folder",
       path: `${selectedFolder.path}/${name}`,
@@ -32,13 +33,13 @@ export const useFileOperations = (
   const handleUploadFiles = async (files: { path: string; publicUrl: string }[]) => {
     files.forEach(file => {
       const newFile: FileItem = {
-        id: `file-${Date.now()}`,
+        id: `file-${uuidv4()}`,
         name: file.path.split('/').pop() || 'Uploaded File',
         type: file.path.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image' : 'document',
         path: file.path,
         size: 'Unknown',
         modified: new Date().toLocaleDateString(),
-        url: file.publicUrl // ✅ ez most már valid
+        url: file.publicUrl
       };
 
       toast({
