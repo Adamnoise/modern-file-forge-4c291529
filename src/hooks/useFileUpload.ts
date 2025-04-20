@@ -24,6 +24,16 @@ export const useFileUpload = () => {
 
     setIsUploading(true);
     try {
+      // Get the current auth session
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      // Check if the user is authenticated
+      if (!sessionData?.session) {
+        // Create anonymous session for uploads if needed
+        // This is a fallback for testing without auth
+        console.log("No authenticated session found. Uploads may fail due to RLS policies.");
+      }
+
       // 🔧 Biztonságos fájlnév + elérési út létrehozása
       const fileExt = file.name.split('.').pop() || 'bin';
       const sanitizedBase = file.name
@@ -39,7 +49,10 @@ export const useFileUpload = () => {
         .from('uploads')
         .upload(filePath, file, { contentType });
 
-      if (uploadError) throw new Error(uploadError.message);
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(uploadError.message);
+      }
 
       // 🌐 Publikus URL lekérése
       const publicUrlData = supabase.storage
