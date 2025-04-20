@@ -27,14 +27,17 @@ export const useFileUpload = () => {
       // Get the current auth session
       const { data: sessionData } = await supabase.auth.getSession();
       
-      // Check if the user is authenticated
+      // Check if the user is authenticated - this is required for uploads due to RLS policies
       if (!sessionData?.session) {
-        // Create anonymous session for uploads if needed
-        // This is a fallback for testing without auth
-        console.log("No authenticated session found. Uploads may fail due to RLS policies.");
+        toast({
+          title: 'Authentication Required',
+          description: 'You need to be logged in to upload files.',
+          variant: 'destructive',
+        });
+        return null;
       }
 
-      // 🔧 Biztonságos fájlnév + elérési út létrehozása
+      // Create a secure filename and path
       const fileExt = file.name.split('.').pop() || 'bin';
       const sanitizedBase = file.name
         .replace(/\s+/g, '-')
@@ -44,17 +47,32 @@ export const useFileUpload = () => {
 
       const contentType = file.type || 'application/octet-stream';
 
-      // ⬆️ Fájl feltöltése Supabase-re
+      // Upload file to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
         .from('uploads')
         .upload(filePath, file, { contentType });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
+        
+        if (uploadError.message.includes('row-level security policy')) {
+          toast({
+            title: 'Authentication Error',
+            description: 'You don\'t have permission to upload files. Please log in.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Upload Failed',
+            description: uploadError.message,
+            variant: 'destructive',
+          });
+        }
+        
         throw new Error(uploadError.message);
       }
 
-      // 🌐 Publikus URL lekérése
+      // Get the public URL
       const publicUrlData = supabase.storage
         .from('uploads')
         .getPublicUrl(filePath);

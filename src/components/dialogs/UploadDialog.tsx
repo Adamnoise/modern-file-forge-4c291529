@@ -6,15 +6,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
-import { useFileUpload } from "@/hooks/useFileUpload";
+import { useFiles } from "@/context/FileContext";
 
 interface UploadDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload?: (files: { path: string; publicUrl: string }[]) => void;
 }
 
 const FileDropZone = ({
@@ -92,10 +92,9 @@ const FileDropZone = ({
 
 export const UploadDialog = ({ 
   isOpen, 
-  onClose, 
-  onUpload 
+  onClose 
 }: UploadDialogProps) => {
-  const { uploadFile, isUploading } = useFileUpload();
+  const { uploadFile, isUploading } = useFiles();
   const [error, setError] = useState<string | null>(null);
 
   const handleFileSelect = useCallback(
@@ -107,20 +106,21 @@ export const UploadDialog = ({
 
       setError(null);
       
-      const uploadPromises = Array.from(files).map(file => 
-        uploadFile(file)
-      );
-
-      const uploadedFiles = await Promise.all(uploadPromises);
-      const validFiles = uploadedFiles.filter(file => file !== null);
-
-      if (validFiles.length > 0 && onUpload) {
-        onUpload(validFiles as { path: string; publicUrl: string }[]);
+      try {
+        // Upload each file one by one
+        for (let i = 0; i < files.length; i++) {
+          await uploadFile(files[i]);
+        }
+        onClose();
+      } catch (error) {
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError("An unknown error occurred during upload.");
+        }
       }
-
-      onClose();
     },
-    [uploadFile, onUpload, onClose]
+    [uploadFile, onClose]
   );
 
   return (
@@ -128,6 +128,9 @@ export const UploadDialog = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
+          <DialogDescription>
+            Drag and drop files or click to browse. You need to be logged in to upload files.
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <FileDropZone 

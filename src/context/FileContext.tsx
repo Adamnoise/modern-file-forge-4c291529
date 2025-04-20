@@ -1,7 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { supabase } from "@/integrations/supabase/client";
 
 interface File {
   id: string;
@@ -35,13 +36,15 @@ interface FileContextValue {
   getFoldersInFolder: (folderId: string | null) => Folder[];
   getFile: (id: string) => File | undefined;
   updateFile: (id: string, updates: Partial<File>) => void;
+  uploadFile: (file: globalThis.File) => Promise<void>;
+  isUploading: boolean;
 }
 
 const FileContext = createContext<FileContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "file-forge-data";
 
-// Segédfüggvények
+// Helper functions
 const loadStoredData = () => {
   const storedData = localStorage.getItem(STORAGE_KEY);
   if (!storedData) return { files: [], folders: [] };
@@ -65,11 +68,12 @@ const saveDataToStorage = (files: File[], folders: Folder[]) => {
 
 export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
+  const { uploadFile: uploadFileToStorage, isUploading } = useFileUpload();
   const [files, setFiles] = useState<File[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
 
-  // Breadcrumbs memoizálása
+  // Memoized breadcrumbs
   const breadcrumbs = useMemo(() => {
     let path = [{ id: "root", name: "Home" }];
     let folderId = currentFolder;
@@ -84,19 +88,19 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return path;
   }, [currentFolder, folders]);
 
-  // Adatok betöltése a localStorage-ból
+  // Load data from localStorage
   useEffect(() => {
     const { files, folders } = loadStoredData();
     setFiles(files);
     setFolders(folders);
   }, []);
 
-  // Adatok mentése a localStorage-ba
+  // Save data to localStorage
   useEffect(() => {
     saveDataToStorage(files, folders);
   }, [files, folders]);
 
-  // Fájl hozzáadása
+  // Add file
   const addFile = useCallback((name: string, type: string, content: string) => {
     const newFile: File = {
       id: uuidv4(),
@@ -115,7 +119,7 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [currentFolder, toast]);
 
-  // Mappa hozzáadása
+  // Add folder
   const addFolder = useCallback((name: string) => {
     const newFolder: Folder = {
       id: uuidv4(),
@@ -130,7 +134,7 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [currentFolder, toast]);
 
-  // Elem törlése
+  // Delete item
   const deleteItem = useCallback((id: string, isFolder: boolean) => {
     if (isFolder) {
       const deleteFolderRecursively = (folderId: string) => {
@@ -152,27 +156,27 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [folders, toast]);
 
-  // Mappába navigálás
+  // Navigate to folder
   const navigateToFolder = useCallback((folderId: string | null) => {
     setCurrentFolder(folderId);
   }, []);
 
-  // Fájlok lekérése egy adott mappában
+  // Get files in folder
   const getFilesInFolder = useCallback(
     (folderId: string | null) => files.filter((file) => file.parentId === folderId),
     [files]
   );
 
-  // Mappák lekérése egy adott mappában
+  // Get folders in folder
   const getFoldersInFolder = useCallback(
     (folderId: string | null) => folders.filter((folder) => folder.parentId === folderId),
     [folders]
   );
 
-  // Fájl lekérése ID alapján
+  // Get file by ID
   const getFile = useCallback((id: string) => files.find((file) => file.id === id), [files]);
 
-  // Fájl frissítése
+  // Update file
   const updateFile = useCallback(
     (id: string, updates: Partial<File>) => {
       setFiles((prevFiles) =>
@@ -183,6 +187,43 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     []
   );
+
+  // Upload file to Supabase and add to local state
+  const uploadFile = useCallback(async (file: globalThis.File) => {
+    // Check if user is authenticated
+    const { data: session } = await supabase.auth.getSession();
+    
+    if (!session?.session) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to upload files",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const result = await uploadFileToStorage(file);
+    
+    if (result) {
+      const newFile: File = {
+        id: uuidv4(),
+        name: file.name,
+        type: file.type.includes('image') ? 'image' : 'document',
+        parentId: currentFolder,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        size: file.size,
+        url: result.publicUrl,
+      };
+      
+      setFiles((prevFiles) => [...prevFiles, newFile]);
+      
+      toast({
+        title: "File Uploaded",
+        description: `${file.name} has been uploaded successfully.`,
+      });
+    }
+  }, [uploadFileToStorage, currentFolder, toast]);
 
   return (
     <FileContext.Provider
@@ -199,6 +240,8 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getFoldersInFolder,
         getFile,
         updateFile,
+        uploadFile,
+        isUploading,
       }}
     >
       {children}
