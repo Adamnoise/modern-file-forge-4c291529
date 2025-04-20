@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import { File, Folder, Breadcrumb } from "@/types/file-types";
@@ -14,7 +14,7 @@ export const useFileContextState = () => {
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
 
   // Save to localStorage whenever files or folders change
-  useState(() => {
+  useEffect(() => { // `useState` helyett `useEffect` használata
     saveDataToStorage(files, folders);
   }, [files, folders]);
 
