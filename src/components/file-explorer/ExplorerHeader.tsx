@@ -1,10 +1,15 @@
-
 import { Button } from "@/components/ui/button";
 import { FolderPlus, Upload } from "lucide-react";
 import { FileItem, FolderItem } from "@/types/file-system";
 import { NewFolderDialog } from "@/components/dialogs/NewFolderDialog";
 import { UploadDialog } from "@/components/dialogs/UploadDialog";
 import { useFileOperations } from "@/hooks/useFileOperations";
+
+interface UploadDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onUpload?: (files: { path: string; publicUrl: string }[]) => Promise<void>; // `onUpload` hozzáadva
+}
 
 interface ExplorerHeaderProps {
   selectedFolder: FolderItem;
@@ -18,7 +23,7 @@ export const ExplorerHeader = ({ selectedFolder, displayItems }: ExplorerHeaderP
     isUploadDialogOpen,
     setIsUploadDialogOpen,
     handleCreateFolder,
-    handleUploadFiles
+    handleUploadFiles,
   } = useFileOperations(selectedFolder, selectedFolder);
 
   return (
@@ -30,17 +35,17 @@ export const ExplorerHeader = ({ selectedFolder, displayItems }: ExplorerHeaderP
             {displayItems.length} items
           </span>
         </div>
-        
+
         <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => setIsNewFolderDialogOpen(true)}
           >
             <FolderPlus size={16} className="mr-2" />
             New Folder
           </Button>
-          <Button 
+          <Button
             size="sm"
             onClick={() => setIsUploadDialogOpen(true)}
           >
@@ -59,7 +64,7 @@ export const ExplorerHeader = ({ selectedFolder, displayItems }: ExplorerHeaderP
       <UploadDialog
         isOpen={isUploadDialogOpen}
         onClose={() => setIsUploadDialogOpen(false)}
-        onUpload={handleUploadFiles}
+        onUpload={handleUploadFiles} // `onUpload` prop helyesen átadva
       />
     </>
   );
