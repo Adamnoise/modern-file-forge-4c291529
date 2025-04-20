@@ -14,6 +14,7 @@ import { useFiles } from "@/context/FileContext";
 interface UploadDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpload?: (files: { path: string; publicUrl: string }[]) => Promise<void>;
 }
 
 const FileDropZone = ({
@@ -89,7 +90,7 @@ const FileDropZone = ({
   );
 };
 
-export const UploadDialog = ({ isOpen, onClose }: UploadDialogProps) => {
+export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) => {
   const { uploadFile, isUploading } = useFiles();
   const [error, setError] = useState<string | null>(null);
 
