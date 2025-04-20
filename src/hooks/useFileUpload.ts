@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -34,18 +35,18 @@ export const useFileUpload = () => {
       const contentType = file.type || 'application/octet-stream';
 
       // ⬆️ Fájl feltöltése Supabase-re
-      const { data, error } = await supabase.storage
+      const { data, error: uploadError } = await supabase.storage
         .from('uploads')
         .upload(filePath, file, { contentType });
 
-      if (error) throw new Error(error.message);
+      if (uploadError) throw new Error(uploadError.message);
 
       // 🌐 Publikus URL lekérése
-      const { data: publicUrlData, error: urlError } = supabase.storage
+      const publicUrlData = supabase.storage
         .from('uploads')
         .getPublicUrl(filePath);
 
-      if (urlError || !publicUrlData?.publicUrl) {
+      if (!publicUrlData?.data?.publicUrl) {
         throw new Error('Failed to retrieve public URL');
       }
 
@@ -56,7 +57,7 @@ export const useFileUpload = () => {
 
       return {
         path: filePath,
-        publicUrl: publicUrlData.publicUrl,
+        publicUrl: publicUrlData.data.publicUrl,
       };
     } catch (error) {
       console.error('Upload error:', error);

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { FileItem, FolderItem } from "@/types/file-system";
@@ -32,15 +33,21 @@ export const useFileOperations = (
 
   const handleUploadFiles = async (files: { path: string; publicUrl: string }[]) => {
     files.forEach(file => {
+      const fileType = file.path.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image' : 'document';
       const newFile: FileItem = {
         id: `file-${uuidv4()}`,
         name: file.path.split('/').pop() || 'Uploaded File',
-        type: file.path.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image' : 'document',
+        type: fileType,
         path: file.path,
         size: 'Unknown',
-        modified: new Date().toLocaleDateString(),
-        url: file.publicUrl
+        modified: new Date().toLocaleDateString()
       };
+
+      // If the file has a public URL, store it in a valid property
+      if (file.publicUrl) {
+        // Using type assertion to add url to the FileItem
+        (newFile as FileItem & { url: string }).url = file.publicUrl;
+      }
 
       toast({
         title: "File uploaded",
