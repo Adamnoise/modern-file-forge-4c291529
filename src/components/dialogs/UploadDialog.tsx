@@ -1,5 +1,4 @@
-
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +21,7 @@ interface UploadDialogProps {
 
 const FileDropZone = ({
   onFileSelect,
-  disabled
+  disabled,
 }: {
   onFileSelect: (files: FileList) => void;
   disabled?: boolean;
@@ -65,8 +64,11 @@ const FileDropZone = ({
   return (
     <div
       className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${
-        disabled ? "opacity-50 cursor-not-allowed" : 
-        isDragging ? "border-primary bg-primary/10" : "hover:border-primary"
+        disabled
+          ? "opacity-50 cursor-not-allowed"
+          : isDragging
+          ? "border-primary bg-primary/10"
+          : "hover:border-primary"
       }`}
       onClick={disabled ? undefined : () => fileInputRef.current?.click()}
       onDragOver={disabled ? undefined : handleDragOver}
@@ -83,11 +85,11 @@ const FileDropZone = ({
       />
       <Upload className="mx-auto mb-4" />
       <p>
-        {disabled 
-          ? "Uploading..." 
-          : isDragging 
-            ? "Drop files here to upload" 
-            : "Click to select files or drag and drop"}
+        {disabled
+          ? "Uploading..."
+          : isDragging
+          ? "Drop files here to upload"
+          : "Click to select files or drag and drop"}
       </p>
     </div>
   );
@@ -98,19 +100,24 @@ export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) =
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  // Check authentication status when dialog opens
-  useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    setIsAuthenticated(!!data.session);
-  }, [isOpen]);
+  // Ellenőrzi az autentikációt, ha a dialog megnyílik
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Authentication error:", error.message);
+          setIsAuthenticated(false);
+        } else {
+          setIsAuthenticated(!!data?.session);
+        }
+      } catch (err) {
+        console.error("Unexpected error during authentication:", err);
+        setIsAuthenticated(false);
+      }
+    };
 
-  // Run the auth check when the dialog opens
-  React.useEffect(() => {
     if (isOpen) {
-      const checkAuth = async () => {
-        const { data } = await supabase.auth.getSession();
-        setIsAuthenticated(!!data.session);
-      };
       checkAuth();
     }
   }, [isOpen]);
@@ -123,7 +130,7 @@ export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) =
       }
 
       setError(null);
-      
+
       try {
         // Upload each file one by one
         for (let i = 0; i < files.length; i++) {
@@ -161,18 +168,14 @@ export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) =
         )}
 
         <div className="py-4">
-          <FileDropZone 
-            onFileSelect={handleFileSelect} 
+          <FileDropZone
+            onFileSelect={handleFileSelect}
             disabled={isUploading || isAuthenticated === false}
           />
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </div>
         <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={onClose} 
-            disabled={isUploading}
-          >
+          <Button variant="outline" onClick={onClose} disabled={isUploading}>
             Cancel
           </Button>
         </DialogFooter>
