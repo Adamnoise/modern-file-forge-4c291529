@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,10 +8,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, AlertTriangle } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useFiles } from "@/context/FileContext";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
+import { Alert } from "@/components/ui/alert";
 
 interface UploadDialogProps {
   isOpen: boolean;
@@ -98,29 +97,6 @@ const FileDropZone = ({
 export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) => {
   const { uploadFile, isUploading } = useFiles();
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-
-  // Ellenőrzi az autentikációt, ha a dialog megnyílik
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error("Authentication error:", error.message);
-          setIsAuthenticated(false);
-        } else {
-          setIsAuthenticated(!!data?.session);
-        }
-      } catch (err) {
-        console.error("Unexpected error during authentication:", err);
-        setIsAuthenticated(false);
-      }
-    };
-
-    if (isOpen) {
-      checkAuth();
-    }
-  }, [isOpen]);
 
   const handleFileSelect = useCallback(
     async (files: FileList) => {
@@ -154,23 +130,14 @@ export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) =
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
-            Drag and drop files or click to browse. You need to be logged in to upload files.
+            Drag and drop files or click to browse.
           </DialogDescription>
         </DialogHeader>
-
-        {isAuthenticated === false && (
-          <Alert className="bg-amber-50 border-amber-200 my-2">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800">
-              Authentication required. You need to sign in or create an account before uploading files.
-            </AlertDescription>
-          </Alert>
-        )}
 
         <div className="py-4">
           <FileDropZone
             onFileSelect={handleFileSelect}
-            disabled={isUploading || isAuthenticated === false}
+            disabled={isUploading}
           />
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </div>
