@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,31 +22,42 @@ export const NewFolderDialog = ({
 }: NewFolderDialogProps) => {
   const [folderName, setFolderName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFolderName(e.target.value);
-    if (error) {
-      setError(null); // Töröljük az esetleges korábbi hibát
+  // Fókusz a bemeneti mezőre az ablak megnyitásakor
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
     }
-  }, [error]);
+  }, [isOpen]);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFolderName(e.target.value);
+      if (error) {
+        setError(null); // Töröljük az esetleges korábbi hibát
+      }
+    },
+    [error]
+  );
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       if (!folderName.trim()) {
-        setError("Folder name cannot be empty.");
+        setError("Folder name cannot be empty or only spaces.");
         return;
       }
       onCreateFolder(folderName.trim());
-      setFolderName("");
-      onClose();
+      setFolderName(""); // Tisztítjuk a mezőt
+      onClose(); // Bezárjuk az ablakot
     },
     [folderName, onCreateFolder, onClose]
   );
 
   const handleClose = useCallback(() => {
-    setFolderName("");
-    setError(null); // Töröljük az esetleges hibát a párbeszédablak bezárásakor
+    setFolderName(""); // Tisztítsuk az állapotot
+    setError(null); // Töröljük az esetleges hibát
     onClose();
   }, [onClose]);
 
@@ -59,6 +70,7 @@ export const NewFolderDialog = ({
         <form onSubmit={handleSubmit}>
           <div className="py-4">
             <Input
+              ref={inputRef} // Hozzárendeljük a ref-et a bemeneti mezőhöz
               value={folderName}
               onChange={handleInputChange}
               placeholder="Enter folder name"
@@ -76,7 +88,9 @@ export const NewFolderDialog = ({
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit">Create</Button>
+            <Button type="submit" disabled={!folderName.trim()}>
+              Create
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
