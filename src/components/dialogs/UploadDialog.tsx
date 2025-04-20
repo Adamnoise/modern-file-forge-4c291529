@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useCallback } from "react";
 import {
   Dialog,
@@ -90,10 +89,7 @@ const FileDropZone = ({
   );
 };
 
-export const UploadDialog = ({ 
-  isOpen, 
-  onClose 
-}: UploadDialogProps) => {
+export const UploadDialog = ({ isOpen, onClose }: UploadDialogProps) => {
   const { uploadFile, isUploading } = useFiles();
   const [error, setError] = useState<string | null>(null);
 
