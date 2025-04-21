@@ -11,9 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { useFiles } from "@/context/FileContext";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface UploadDialogProps {
   isOpen: boolean;
@@ -100,39 +97,11 @@ const FileDropZone = ({
 export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) => {
   const { uploadFile, isUploading } = useFiles();
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [authError, setAuthError] = useState<boolean>(false);
-
-  // Check authentication status when dialog opens
-  React.useEffect(() => {
-    if (isOpen) {
-      checkAuthStatus();
-    }
-  }, [isOpen]);
-
-  const checkAuthStatus = async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      setIsAuthenticated(!!data.session);
-      setAuthError(false);
-    } catch (error) {
-      console.error("Error checking auth status:", error);
-      setIsAuthenticated(false);
-      setAuthError(true);
-    }
-  };
 
   const handleFileSelect = useCallback(
     async (files: FileList) => {
       if (!files || files.length === 0) {
         setError("No files selected. Please try again.");
-        return;
-      }
-
-      // Double-check authentication before upload
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        setIsAuthenticated(false);
         return;
       }
 
@@ -166,40 +135,10 @@ export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) =
         </DialogHeader>
 
         <div className="py-4">
-          {isAuthenticated === false && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTitle className="flex items-center">
-                Authentication Required
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="ml-auto h-6 w-6 p-0" 
-                  onClick={onClose}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </AlertTitle>
-              <AlertDescription>
-                You need to be logged in to upload files.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {authError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                There was a problem checking your authentication status. Please try again.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {isAuthenticated !== false && (
-            <FileDropZone
-              onFileSelect={handleFileSelect}
-              disabled={isUploading || isAuthenticated === false}
-            />
-          )}
+          <FileDropZone
+            onFileSelect={handleFileSelect}
+            disabled={isUploading}
+          />
           
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </div>

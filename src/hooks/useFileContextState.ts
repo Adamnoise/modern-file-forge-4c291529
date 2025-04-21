@@ -1,11 +1,9 @@
-
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import { File, Folder, Breadcrumb } from "@/types/file-types";
 import { loadStoredData, saveDataToStorage } from "@/utils/storage-utils";
 import { useFileUpload } from "./useFileUpload";
-import { supabase } from "@/integrations/supabase/client";
 
 export const useFileContextState = () => {
   const { toast } = useToast();
@@ -116,18 +114,6 @@ export const useFileContextState = () => {
   }, []);
 
   const uploadFile = useCallback(async (file: globalThis.File) => {
-    // Check authentication first
-    const { data: sessionData } = await supabase.auth.getSession();
-    
-    if (!sessionData?.session) {
-      toast({
-        title: 'Authentication Required',
-        description: 'You need to be logged in to upload files.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
     const result = await uploadFileToStorage(file);
     
     if (result) {

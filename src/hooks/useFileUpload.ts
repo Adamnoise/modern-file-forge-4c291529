@@ -24,29 +24,6 @@ export const useFileUpload = () => {
 
     setIsUploading(true);
     try {
-      // Get the current auth session
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      // Check if there was an error fetching the session
-      if (sessionError) {
-        toast({
-          title: 'Authentication Error',
-          description: 'Could not verify your authentication status.',
-          variant: 'destructive',
-        });
-        return null;
-      }
-      
-      // Check if the user is authenticated - this is required for uploads due to RLS policies
-      if (!sessionData?.session) {
-        toast({
-          title: 'Authentication Required',
-          description: 'You need to be logged in to upload files.',
-          variant: 'destructive',
-        });
-        return null;
-      }
-
       // Create a secure filename and path
       const fileExt = file.name.split('.').pop() || 'bin';
       const sanitizedBase = file.name
@@ -64,21 +41,11 @@ export const useFileUpload = () => {
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        
-        if (uploadError.message.includes('row-level security policy')) {
-          toast({
-            title: 'Authentication Error',
-            description: 'You don\'t have permission to upload files. Please log in.',
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Upload Failed',
-            description: uploadError.message,
-            variant: 'destructive',
-          });
-        }
-        
+        toast({
+          title: 'Upload Failed',
+          description: uploadError.message,
+          variant: 'destructive',
+        });
         return null;
       }
 
