@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useCallback } from "react";
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
-import { useFiles } from "@/context/FileContext";
+import { FileDropZone } from "@/components/upload/FileDropZone";
+import { useUploadDialog } from "@/hooks/useUploadDialog";
 
 interface UploadDialogProps {
   isOpen: boolean;
@@ -18,111 +18,8 @@ interface UploadDialogProps {
   onUpload?: (files: { path: string; publicUrl: string }[]) => Promise<void>;
 }
 
-const FileDropZone = ({
-  onFileSelect,
-  disabled,
-}: {
-  onFileSelect: (files: FileList) => void;
-  disabled?: boolean;
-}) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files.length > 0) {
-        onFileSelect(e.target.files);
-      }
-    },
-    [onFileSelect]
-  );
-
-  const handleDragOver = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      setIsDragging(true);
-    },
-    []
-  );
-
-  const handleDragLeave = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      setIsDragging(false);
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        onFileSelect(e.dataTransfer.files);
-      }
-    },
-    [onFileSelect]
-  );
-
-  return (
-    <div
-      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${
-        disabled
-          ? "opacity-50 cursor-not-allowed"
-          : isDragging
-          ? "border-primary bg-primary/10"
-          : "hover:border-primary"
-      }`}
-      onClick={disabled ? undefined : () => fileInputRef.current?.click()}
-      onDragOver={disabled ? undefined : handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={disabled ? undefined : handleDrop}
-    >
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        multiple
-        disabled={disabled}
-      />
-      <Upload className="mx-auto mb-4" />
-      <p>
-        {disabled
-          ? "Uploading..."
-          : isDragging
-          ? "Drop files here to upload"
-          : "Click to select files or drag and drop"}
-      </p>
-    </div>
-  );
-};
-
 export const UploadDialog = ({ isOpen, onClose, onUpload }: UploadDialogProps) => {
-  const { uploadFile, isUploading } = useFiles();
-  const [error, setError] = useState<string | null>(null);
-
-  const handleFileSelect = useCallback(
-    async (files: FileList) => {
-      if (!files || files.length === 0) {
-        setError("No files selected. Please try again.");
-        return;
-      }
-
-      setError(null);
-
-      try {
-        // Upload each file one by one
-        for (let i = 0; i < files.length; i++) {
-          await uploadFile(files[i]);
-        }
-        onClose();
-      } catch (error) {
-        if (error instanceof Error) {
-          setError(error.message);
-        } else {
-          setError("An unknown error occurred during upload.");
-        }
-      }
-    },
-    [uploadFile, onClose]
-  );
+  const { handleFileSelect, error, isUploading } = useUploadDialog(onClose);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
