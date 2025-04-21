@@ -36,7 +36,3 @@ export const useUploadDialog = (onClose: () => void) => {
     isUploading
   };
 };
-</lov-write>
-
-2. Now, let's create a separate component for the file drop zone:
-
