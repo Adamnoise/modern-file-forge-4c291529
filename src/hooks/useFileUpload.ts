@@ -25,7 +25,17 @@ export const useFileUpload = () => {
     setIsUploading(true);
     try {
       // Get the current auth session
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      // Check if there was an error fetching the session
+      if (sessionError) {
+        toast({
+          title: 'Authentication Error',
+          description: 'Could not verify your authentication status.',
+          variant: 'destructive',
+        });
+        return null;
+      }
       
       // Check if the user is authenticated - this is required for uploads due to RLS policies
       if (!sessionData?.session) {
@@ -69,7 +79,7 @@ export const useFileUpload = () => {
           });
         }
         
-        throw new Error(uploadError.message);
+        return null;
       }
 
       // Get the public URL
